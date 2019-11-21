@@ -5,6 +5,20 @@
             Your list is empty
         </div>
 
+        <div>
+            <div class="btn-group mr-2" role="group">
+                <button type="button" class="btn btn-secondary"
+                        v-for="list in lists" @click="loadById(list.id)">{{ list.name }}</button>
+            </div>
+        </div>
+
+        <div class="input-group mb-3 task-form" v-if="taskList.length">
+            <input type="text" class="form-control" placeholder="A list name" v-model="listName">
+            <div class="input-group-append">
+                <button class="btn btn-success" type="button" @click="upload">Save</button>
+            </div>
+        </div>
+
         <ul class="list-group">
             <li class="list-group-item" v-for="(task, index) in taskList">
                 {{ task }}
@@ -34,7 +48,11 @@
                 // Text from user form input
                 formText: '',
                 // An array containing a task list
-                taskList: []
+                taskList: [],
+                // A name of the list
+                listName: '',
+                // List of all lists
+                lists: []
             }
         },
         methods: {
@@ -56,6 +74,36 @@
             remove: function (index) {
                 this.taskList.splice(index, 1);
                 this.save();
+            },
+            upload: async function () {
+                if(!this.listName) {
+                    return;
+                }
+                let query = '?name=' + encodeURIComponent(this.listName);
+                let response = await fetch(process.env.VUE_APP_API_URL+'upload'+query, {
+                    method: 'POST',
+                    body: JSON.stringify(this.taskList)
+                });
+                let result = await response.json();
+                if(result.status && result.is_new) {
+                    this.lists.push({id: result.id, name: result.name});
+                }
+            },
+            loadAll: async function () {
+                let response = await fetch(process.env.VUE_APP_API_URL+'list', {
+                    method: 'GET'
+                });
+                let result = await response.json();
+                this.lists = result;
+            },
+            loadById: async function (id) {
+                let response = await fetch(process.env.VUE_APP_API_URL+'load?id='+id, {
+                    method: 'GET'
+                });
+                let result = await response.json();
+                this.listName = result.name;
+                this.taskList = JSON.parse(result.data);
+                this.save();
             }
         },
         created() {
@@ -64,6 +112,7 @@
             if(storageData) {
                 this.taskList = JSON.parse(storageData);
             }
+            this.loadAll();
         }
     }
 </script>
